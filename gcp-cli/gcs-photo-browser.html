@@ -381,11 +381,72 @@
   #lb-name {
     flex: 1;
     font-size: 13px;
-    color: var(--text2);
+    color: var(--accent);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: rgba(232,200,122,0.3);
+    text-underline-offset: 3px;
+    transition: color 0.15s, text-decoration-color 0.15s;
   }
+  #lb-name:hover { color: var(--accent2); text-decoration-color: var(--accent2); }
+
+  #lb-meta-panel {
+    display: none;
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 20;
+    overflow-y: auto;
+    padding: 24px 32px;
+  }
+  #lb-meta-panel.open { display: block; }
+  #lb-meta-panel h3 {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  #lb-meta-panel table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 700px;
+  }
+  #lb-meta-panel td {
+    padding: 6px 12px 6px 0;
+    font-size: 13px;
+    vertical-align: top;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  #lb-meta-panel td:first-child {
+    color: var(--text3);
+    white-space: nowrap;
+    width: 200px;
+    font-weight: 500;
+  }
+  #lb-meta-panel td:last-child {
+    color: var(--text);
+    word-break: break-all;
+  }
+  #lb-meta-close {
+    position: absolute;
+    top: 16px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #lb-meta-close:hover { background: var(--bg3); color: var(--text); }
   #lb-date { font-size: 12px; color: var(--text3); white-space: nowrap; }
   #lb-download {
     background: var(--surface);
@@ -514,7 +575,7 @@
 <div id="lightbox">
   <div id="lb-topbar">
     <button id="lb-close" onclick="closeLightbox()">✕</button>
-    <div id="lb-name"></div>
+    <div id="lb-name" onclick="toggleMetaPanel()"></div>
     <div id="lb-date"></div>
     <a id="lb-download" target="_blank">↓ Download</a>
   </div>
@@ -522,6 +583,11 @@
     <button id="lb-prev" onclick="lbNav(-1)">‹</button>
     <div id="lb-media"></div>
     <button id="lb-next" onclick="lbNav(1)">›</button>
+    <div id="lb-meta-panel">
+      <button id="lb-meta-close" onclick="toggleMetaPanel()">✕ Close</button>
+      <h3>Object Metadata</h3>
+      <div id="lb-meta-content">Loading…</div>
+    </div>
   </div>
   <div id="lb-info">
     <div>File: <span id="lb-size">—</span></div>
@@ -1104,6 +1170,9 @@ function renderLightbox() {
   const item = allItems[lbIndex];
   if (!item) return;
 
+  // Close metadata panel when navigating
+  document.getElementById('lb-meta-panel').classList.remove('open');
+
   document.getElementById('lb-name').textContent = item.name.split('/').pop();
   document.getElementById('lb-date').textContent = item.created.toLocaleString();
   document.getElementById('lb-size').textContent = fmtSize(item.size);
@@ -1134,6 +1203,97 @@ function renderLightbox() {
 
   document.getElementById('lb-prev').style.display = lbIndex > 0 ? '' : 'none';
   document.getElementById('lb-next').style.display = lbIndex < allItems.length - 1 ? '' : 'none';
+}
+
+// ─────────────────────────────────────────────
+// METADATA PANEL
+// ─────────────────────────────────────────────
+let metaCache = {};  // cache by "bucket/name"
+
+function toggleMetaPanel() {
+  const panel = document.getElementById('lb-meta-panel');
+  if (panel.classList.contains('open')) {
+    panel.classList.remove('open');
+    return;
+  }
+  panel.classList.add('open');
+  fetchAndShowMeta();
+}
+
+async function fetchAndShowMeta() {
+  const item = allItems[lbIndex];
+  if (!item) return;
+  const cacheKey = `${item.bucket}/${item.name}`;
+  const container = document.getElementById('lb-meta-content');
+
+  if (metaCache[cacheKey]) {
+    container.innerHTML = buildMetaTable(metaCache[cacheKey]);
+    return;
+  }
+
+  container.textContent = 'Loading…';
+  try {
+    const url = `${GCS_API}/b/${encodeURIComponent(item.bucket)}/o/${encodeURIComponent(item.name)}?alt=json`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+    const meta = await resp.json();
+    metaCache[cacheKey] = meta;
+    container.innerHTML = buildMetaTable(meta);
+  } catch (e) {
+    container.textContent = `Error fetching metadata: ${e.message}`;
+  }
+}
+
+function buildMetaTable(m) {
+  const rows = [];
+  function row(label, val) {
+    if (val === undefined || val === null || val === '') return;
+    rows.push(`<tr><td>${escHtml(label)}</td><td>${escHtml(String(val))}</td></tr>`);
+  }
+  function fmtDate(s) { return s ? new Date(s).toLocaleString() : ''; }
+
+  row('Name', m.name);
+  row('Bucket', m.bucket);
+  row('Size', fmtSize(parseInt(m.size || 0)) + ` (${parseInt(m.size || 0).toLocaleString()} bytes)`);
+  row('Content Type', m.contentType);
+  row('Content Encoding', m.contentEncoding);
+  row('Content Language', m.contentLanguage);
+  row('Content Disposition', m.contentDisposition);
+  row('Cache Control', m.cacheControl);
+  row('Storage Class', m.storageClass);
+  row('Time Created', fmtDate(m.timeCreated));
+  row('Updated', fmtDate(m.updated));
+  row('Time Storage Class Updated', fmtDate(m.timeStorageClassUpdated));
+  row('Generation', m.generation);
+  row('Metageneration', m.metageneration);
+  row('MD5 Hash', m.md5Hash);
+  row('CRC32C', m.crc32c);
+  row('ETag', m.etag);
+  row('Component Count', m.componentCount);
+  row('KMS Key', m.kmsKeyName);
+  row('Temporary Hold', m.temporaryHold);
+  row('Event-Based Hold', m.eventBasedHold);
+  row('Retention Expiration', fmtDate(m.retentionExpirationTime));
+  row('Custom Time', fmtDate(m.customTime));
+
+  // Custom metadata
+  if (m.metadata && Object.keys(m.metadata).length > 0) {
+    for (const [k, v] of Object.entries(m.metadata)) {
+      row(`metadata.${k}`, v);
+    }
+  }
+
+  // Owner
+  if (m.owner) {
+    row('Owner Entity', m.owner.entity);
+    row('Owner Entity ID', m.owner.entityId);
+  }
+
+  // Self link & media link
+  row('Self Link', m.selfLink);
+  row('Media Link', m.mediaLink);
+
+  return `<table>${rows.join('')}</table>`;
 }
 
 // ─────────────────────────────────────────────
