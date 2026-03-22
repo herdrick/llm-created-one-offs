@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer onload="window.onGsiLoad && window.onGsiLoad()"></script>
+<style>
+  :root {
+    --bg: #0e0e0f;
+    --bg2: #1a1a1c;
+    --bg3: #242426;
+    --surface: #2a2a2d;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede8;
+    --text2: #8a887f;
+    --text3: #5a5854;
+    --accent: #e8c87a;
+    --accent2: #d4a852;
+    --red: #e05252;
+    --radius: 8px;
+    --font: 'DM Sans', sans-serif;
+    --font-serif: 'DM Serif Display', serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    height: 56px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  #topbar .logo {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    font-style: italic;
+  }
+  #topbar .logo span { font-style: normal; color: var(--text2); font-size: 13px; margin-left: 6px; font-family: var(--font); }
+  #bucket-input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #bucket-input::placeholder { color: var(--text3); }
+  #bucket-input:focus { border-color: rgba(255,255,255,0.2); }
+  #btn-load {
+    background: var(--accent);
+    color: #1a1409;
+    border: none;
+    border-radius: 20px;
+    padding: 7px 18px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  #btn-load:hover { background: var(--accent2); }
+  #btn-auth {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid rgba(232,200,122,0.4);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-family: var(--font);
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  #btn-auth:hover { background: rgba(232,200,122,0.1); }
+  #auth-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  #auth-dot.authed { background: #52c87a; }
+
+  #prefix-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #prefix-bar label { color: var(--text3); font-size: 12px; white-space: nowrap; }
+  #prefix-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text2);
+    font-family: var(--font);
+    font-size: 12px;
+    outline: none;
+  }
+  #prefix-input::placeholder { color: var(--text3); }
+
+  /* ── FOLDER MODE ── */
+  .folder-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 13px;
+    user-select: none;
+  }
+  .folder-toggle input {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+  }
+
+  #breadcrumb-bar {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  #breadcrumb-bar.visible { display: flex; }
+  .bc-segment {
+    color: var(--accent);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .bc-segment:hover { background: rgba(232,200,122,0.12); }
+  .bc-sep { color: var(--text3); font-size: 11px; }
+  .bc-current { color: var(--text2); cursor: default; }
+  .bc-current:hover { background: transparent; }
+
+  .folder-tile {
+    aspect-ratio: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--bg3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .folder-tile:hover {
+    background: var(--surface);
+    border-color: rgba(255,255,255,0.15);
+  }
+  .folder-tile .folder-icon {
+    font-size: 32px;
+    opacity: 0.7;
+  }
+  .folder-tile .folder-name {
+    font-size: 12px;
+    color: var(--text2);
+    text-align: center;
+    padding: 0 8px;
+    word-break: break-all;
+    line-height: 1.3;
+    max-height: 3.9em;
+    overflow: hidden;
+  }
+
+  /* ── MAIN SCROLL ── */
+  #gallery-wrap {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: auto;
+  }
+  #gallery-wrap::-webkit-scrollbar { width: 5px; }
+  #gallery-wrap::-webkit-scrollbar-track { background: transparent; }
+  #gallery-wrap::-webkit-scrollbar-thumb { background: var(--surface); border-radius: 3px; }
+
+  #gallery {
+    padding: 0 0 80px;
+  }
+
+  /* ── DATE GROUP ── */
+  .date-group { margin-bottom: 4px; }
+  .date-label {
+    padding: 20px 16px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    letter-spacing: 0.02em;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .date-label .count { font-weight: 400; color: var(--text3); margin-left: 6px; }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    padding: 0 2px;
+  }
+
+  .thumb {
+    aspect-ratio: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--bg3);
+  }
+  .thumb img, .thumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+  .thumb:hover img, .thumb:hover video { transform: scale(1.04); }
+  .thumb .video-badge {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(0,0,0,0.65);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .thumb .video-badge::before {
+    content: '';
+    display: block;
+    width: 0; height: 0;
+    border-left: 7px solid #fff;
+    border-top: 4.5px solid transparent;
+    border-bottom: 4.5px solid transparent;
+  }
+  .thumb.skeleton { animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse {
+    0%,100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+  }
+  .thumb .err-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text3);
+    font-size: 20px;
+  }
+
+  /* ── EMPTY / STATUS ── */
+  #status-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 14px;
+    color: var(--text3);
+    padding: 60px 40px;
+    text-align: center;
+  }
+  #status-wrap .big {
+    font-family: var(--font-serif);
+    font-size: 36px;
+    color: var(--text2);
+    font-style: italic;
+  }
+  #status-wrap p { font-size: 14px; line-height: 1.7; max-width: 400px; }
+  #status-wrap .hint {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    font-size: 12px;
+    color: var(--text2);
+    text-align: left;
+    max-width: 440px;
+  }
+  #status-wrap .hint code {
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── LOAD MORE SENTINEL ── */
+  #sentinel { height: 60px; width: 100%; }
+  #load-more-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    display: none;
+  }
+
+  /* ── LIGHTBOX ── */
+  #lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.94);
+    z-index: 1000;
+    flex-direction: column;
+  }
+  #lightbox.open { display: flex; }
+  #lb-topbar {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    gap: 16px;
+    background: rgba(0,0,0,0.6);
+    flex-shrink: 0;
+  }
+  #lb-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text2); font-size: 22px; line-height: 1;
+    padding: 4px; border-radius: 4px;
+    transition: color 0.15s;
+  }
+  #lb-close:hover { color: var(--text); }
+  #lb-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #lb-date { font-size: 12px; color: var(--text3); white-space: nowrap; }
+  #lb-download {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  #lb-download:hover { background: var(--bg3); }
+
+  #lb-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  #lb-body img, #lb-body video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  #lb-body video { outline: none; }
+  #lb-prev, #lb-next {
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: var(--text);
+    font-size: 24px;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    z-index: 10;
+  }
+  #lb-prev { left: 16px; }
+  #lb-next { right: 16px; }
+  #lb-prev:hover, #lb-next:hover { background: rgba(255,255,255,0.18); }
+
+  #lb-info {
+    background: rgba(0,0,0,0.5);
+    padding: 10px 20px;
+    font-size: 12px;
+    color: var(--text3);
+    display: flex;
+    gap: 24px;
+    flex-shrink: 0;
+  }
+  #lb-info span { color: var(--text2); }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: repeat(3, 1fr); }
+    #lb-prev { left: 6px; }
+    #lb-next { right: 6px; }
+  }
+  @media (max-width: 380px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── TOP BAR ── -->
+<div id="topbar">
+  <div class="logo">Cloud Gallery<span>for GCS</span></div>
+  <button id="btn-auth" onclick="handleAuth()">
+    <span id="auth-dot"></span>
+    <span id="auth-label">Sign in with Google</span>
+  </button>
+  <input id="bucket-input" type="text" placeholder="your-bucket-name" spellcheck="false">
+  <input id="prefix-input" style="flex:0.5;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;" type="text" placeholder="prefix/ (optional)">
+  <label class="folder-toggle">
+    <input type="checkbox" id="folder-mode-toggle" onchange="onFolderModeChange()">
+    Show folders
+  </label>
+  <button id="btn-load" onclick="startLoad()">Browse</button>
+</div>
+
+<div id="breadcrumb-bar"></div>
+
+<!-- ── GALLERY ── -->
+<div id="gallery-wrap">
+  <div id="gallery">
+    <div id="status-wrap">
+      <div class="big">Your memories,</div>
+      <div class="big" style="font-style:normal;color:var(--text3);font-size:28px;">beautifully browsed.</div>
+      <p>Sign in with your Google account, enter a bucket name, and browse photos &amp; videos just like Google Photos — grouped by date, infinitely scrollable.</p>
+      <div class="hint">
+        <strong style="color:var(--text);">Setup checklist</strong><br><br>
+        1. Your bucket needs <code>Storage Object Viewer</code> access for your Google account<br>
+        2. Configure CORS on the bucket — see instructions below<br>
+        3. Sign in, enter bucket name, hit Browse
+      </div>
+      <details style="max-width:440px;color:var(--text2);font-size:12px;">
+        <summary style="cursor:pointer;color:var(--text3);margin-bottom:8px;">CORS configuration (click to expand)</summary>
+        <div class="hint" style="margin-top:8px;">
+          Run this once via <code>gsutil</code>:<br><br>
+          <code>gsutil cors set cors.json gs://YOUR-BUCKET</code><br><br>
+          Where <code>cors.json</code> contains:<br>
+          <pre style="margin-top:6px;color:var(--accent);font-size:11px;">[{
+  "origin": ["*"],
+  "method": ["GET"],
+  "responseHeader": ["Content-Type","Authorization"],
+  "maxAgeSeconds": 3600
+}]</pre>
+        </div>
+      </details>
+    </div>
+  </div>
+  <div id="load-more-spinner"><div class="spinner"></div></div>
+  <div id="sentinel"></div>
+</div>
+
+<!-- ── LIGHTBOX ── -->
+<div id="lightbox">
+  <div id="lb-topbar">
+    <button id="lb-close" onclick="closeLightbox()">✕</button>
+    <div id="lb-name"></div>
+    <div id="lb-date"></div>
+    <a id="lb-download" target="_blank">↓ Download</a>
+  </div>
+  <div id="lb-body">
+    <button id="lb-prev" onclick="lbNav(-1)">‹</button>
+    <div id="lb-media"></div>
+    <button id="lb-next" onclick="lbNav(1)">›</button>
+  </div>
+  <div id="lb-info">
+    <div>File: <span id="lb-size">—</span></div>
+    <div>Type: <span id="lb-type">—</span></div>
+    <div id="lb-counter"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+const CLIENT_ID = '519927379455-u7ilqbg33i5ussde1mkabjjm4f4jdmqh.apps.googleusercontent.com'; // ← Replace this
+const SCOPES    = 'https://www.googleapis.com/auth/devstorage.read_only';
+const GCS_API   = 'https://storage.googleapis.com/storage/v1';
+const PAGE_SIZE = 100;
+
+const IMAGE_EXTS = new Set(['jpg','jpeg','png','gif','webp','heic','heif','avif','bmp','tiff','tif']);
+const VIDEO_EXTS = new Set(['mp4','mov','avi','mkv','webm','m4v','3gp','mts','m2ts']);
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let accessToken    = null;
+let tokenExpiry    = 0;
+let allItems       = [];   // all media items loaded so far (flat, sorted)
+let groups         = [];   // [{label, items:[]}]
+let pageToken      = null; // GCS nextPageToken
+let loading        = false;
+let allLoaded      = false;
+let renderedCount  = 0;    // how many items we've rendered into the DOM
+const RENDER_BATCH = 80;   // items to add to DOM at a time
+
+let lbIndex = 0;           // lightbox current index into allItems
+
+// Folder mode state
+let folderMode     = false;
+let currentPath    = '';   // current folder path (e.g. "photos/2024/")
+let currentFolders = [];   // subfolder prefixes at current level
+
+// ─────────────────────────────────────────────
+// AUTH — Google Identity Services token client
+// Uses popup flow: NO redirect URI needed,
+// only "Authorized JavaScript Origins" in GCP console.
+// ─────────────────────────────────────────────
+let tokenClient = null;
+
+function initTokenClient() {
+  if (CLIENT_ID === 'YOUR_GOOGLE_OAUTH_CLIENT_ID') return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { showStatus('error', 'Auth error: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      // GSI tokens last 1 hour; expire a minute early
+      tokenExpiry = Date.now() + ((resp.expires_in || 3600) - 60) * 1000;
+      setAuthUI(true);
+    },
+  });
+}
+
+// Called once GSI script has loaded
+window.onGsiLoad = initTokenClient;
+
+function handleAuth() {
+  if (accessToken && Date.now() < tokenExpiry) {
+    // Already signed in — sign out
+    google.accounts.oauth2.revoke(accessToken, () => {});
+    accessToken = null;
+    tokenExpiry = 0;
+    setAuthUI(false);
+    return;
+  }
+  if (CLIENT_ID === 'YOUR_GOOGLE_OAUTH_CLIENT_ID') {
+    alert('Replace YOUR_GOOGLE_OAUTH_CLIENT_ID with your actual Client ID.\n\nIn Google Cloud Console:\n→ APIs & Services → Credentials → your OAuth client\n→ Add "' + location.origin + '" under Authorized JavaScript Origins\n\nNo Redirect URI needed with this auth method.');
+    return;
+  }
+  if (!tokenClient) { initTokenClient(); }
+  // prompt:'select_account' forces the account chooser every time
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
+}
+
+function setAuthUI(authed) {
+  document.getElementById('auth-dot').className = authed ? 'authed' : '';
+  document.getElementById('auth-label').textContent = authed ? 'Signed in — click to sign out' : 'Sign in with Google';
+}
+
+function authHeaders() {
+  if (!accessToken) return {};
+  return { Authorization: 'Bearer ' + accessToken };
+}
+
+// ─────────────────────────────────────────────
+// LOADING
+// ─────────────────────────────────────────────
+async function startLoad() {
+  const bucket = document.getElementById('bucket-input').value.trim();
+  if (!bucket) return;
+
+  folderMode = document.getElementById('folder-mode-toggle').checked;
+
+  if (folderMode) {
+    const prefix = document.getElementById('prefix-input').value.trim();
+    currentPath = prefix ? (prefix.endsWith('/') ? prefix : prefix + '/') : '';
+    await navigateToFolder(currentPath);
+  } else {
+    const prefix = document.getElementById('prefix-input').value.trim();
+    currentPath = '';
+    currentFolders = [];
+    resetGallery();
+    updateBreadcrumbs();
+    showStatus('loading');
+    await loadPage(bucket, prefix);
+  }
+}
+
+function resetGallery() {
+  allItems = []; groups = []; pageToken = null; allLoaded = false; renderedCount = 0;
+  currentFolders = [];
+  document.getElementById('gallery').innerHTML = '';
+  document.getElementById('load-more-spinner').style.display = 'none';
+}
+
+async function navigateToFolder(path) {
+  const bucket = document.getElementById('bucket-input').value.trim();
+  if (!bucket) return;
+
+  currentPath = path;
+  resetGallery();
+  updateBreadcrumbs();
+  showStatus('loading');
+  await loadPage(bucket, currentPath);
+}
+
+function onFolderModeChange() {
+  folderMode = document.getElementById('folder-mode-toggle').checked;
+  if (!folderMode) {
+    currentPath = '';
+    currentFolders = [];
+    updateBreadcrumbs();
+  }
+}
+
+function updateBreadcrumbs() {
+  const bar = document.getElementById('breadcrumb-bar');
+  if (!folderMode || !document.getElementById('bucket-input').value.trim()) {
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+  bar.innerHTML = '';
+
+  const bucket = document.getElementById('bucket-input').value.trim();
+  const basePrefix = document.getElementById('prefix-input').value.trim();
+  const basePath = basePrefix ? (basePrefix.endsWith('/') ? basePrefix : basePrefix + '/') : '';
+
+  // Root segment
+  const root = document.createElement('span');
+  root.className = 'bc-segment';
+  root.textContent = bucket + (basePath ? '/' + basePath : '/');
+  root.onclick = () => navigateToFolder(basePath);
+  bar.appendChild(root);
+
+  // Path segments beyond the base prefix
+  if (currentPath.length > basePath.length) {
+    const relative = currentPath.slice(basePath.length);
+    const parts = relative.split('/').filter(Boolean);
+    let accumulated = basePath;
+    for (let i = 0; i < parts.length; i++) {
+      accumulated += parts[i] + '/';
+      const sep = document.createElement('span');
+      sep.className = 'bc-sep';
+      sep.textContent = '›';
+      bar.appendChild(sep);
+
+      const seg = document.createElement('span');
+      const isLast = i === parts.length - 1;
+      seg.className = 'bc-segment' + (isLast ? ' bc-current' : '');
+      seg.textContent = parts[i];
+      if (!isLast) {
+        const target = accumulated;
+        seg.onclick = () => navigateToFolder(target);
+      }
+      bar.appendChild(seg);
+    }
+  }
+}
+
+async function loadPage(bucket, prefix) {
+  if (loading || allLoaded) return;
+  loading = true;
+  document.getElementById('load-more-spinner').style.display = 'flex';
+
+  try {
+    const fields = folderMode
+      ? 'nextPageToken,prefixes,items(name,size,contentType,timeCreated,updated,metadata)'
+      : 'nextPageToken,items(name,size,contentType,timeCreated,updated,metadata)';
+    const params = new URLSearchParams({ maxResults: PAGE_SIZE, fields });
+    if (prefix) params.set('prefix', prefix);
+    if (folderMode) params.set('delimiter', '/');
+    if (pageToken) params.set('pageToken', pageToken);
+
+    const res = await fetch(`${GCS_API}/b/${encodeURIComponent(bucket)}/o?${params}`, {
+      headers: authHeaders()
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    pageToken = data.nextPageToken || null;
+    if (!pageToken) allLoaded = true;
+
+    // Collect subfolder prefixes (folder mode only, first page)
+    if (folderMode && data.prefixes && currentFolders.length === 0) {
+      currentFolders = data.prefixes.slice();
+    } else if (folderMode && data.prefixes) {
+      for (const p of data.prefixes) {
+        if (!currentFolders.includes(p)) currentFolders.push(p);
+      }
+    }
+
+    const items = (data.items || []).filter(it => {
+      const ext = it.name.split('.').pop().toLowerCase();
+      return IMAGE_EXTS.has(ext) || VIDEO_EXTS.has(ext);
+    }).map(it => ({
+      name: it.name,
+      size: parseInt(it.size || 0),
+      contentType: it.contentType || '',
+      created: new Date(it.timeCreated || it.updated || 0),
+      url: `https://storage.googleapis.com/${encodeURIComponent(bucket)}/${encodeURIComponent(it.name)}`,
+      isVideo: VIDEO_EXTS.has(it.name.split('.').pop().toLowerCase()),
+      bucket
+    }));
+
+    // Insert in sorted order (newest first)
+    allItems = allItems.concat(items).sort((a,b) => b.created - a.created);
+
+    rebuildGroups();
+    renderNext();
+
+    if (allItems.length === 0 && currentFolders.length === 0 && allLoaded) showStatus('empty');
+    else hideStatus();
+
+    // Render folder tiles if in folder mode
+    if (folderMode && currentFolders.length > 0) renderFolderTiles();
+
+  } catch(e) {
+    showStatus('error', e.message);
+  }
+  loading = false;
+  document.getElementById('load-more-spinner').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// GROUPING
+// ─────────────────────────────────────────────
+function dateKey(d) {
+  return d.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+}
+
+function rebuildGroups() {
+  const map = new Map();
+  for (const item of allItems) {
+    const k = dateKey(item.created);
+    if (!map.has(k)) map.set(k, { label: k, items: [] });
+    map.get(k).items.push(item);
+  }
+  groups = Array.from(map.values());
+}
+
+// ─────────────────────────────────────────────
+// FOLDER TILES
+// ─────────────────────────────────────────────
+function renderFolderTiles() {
+  const gallery = document.getElementById('gallery');
+  let container = gallery.querySelector('.folder-section');
+  if (container) container.remove();
+
+  if (currentFolders.length === 0) return;
+
+  container = document.createElement('div');
+  container.className = 'folder-section';
+
+  const label = document.createElement('div');
+  label.className = 'date-label';
+  label.innerHTML = `Folders<span class="count">· ${currentFolders.length}</span>`;
+  container.appendChild(label);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  container.appendChild(grid);
+
+  for (const prefix of currentFolders) {
+    const name = prefix.slice(0, -1).split('/').pop(); // strip trailing / and get last segment
+    const tile = document.createElement('div');
+    tile.className = 'folder-tile';
+    tile.onclick = () => navigateToFolder(prefix);
+    tile.innerHTML = `<div class="folder-icon">📁</div><div class="folder-name">${escHtml(name)}</div>`;
+    grid.appendChild(tile);
+  }
+
+  gallery.insertBefore(container, gallery.firstChild);
+}
+
+// ─────────────────────────────────────────────
+// DOM RENDERING (incremental)
+// ─────────────────────────────────────────────
+function renderNext() {
+  // We render from allItems[renderedCount] forward, up to RENDER_BATCH more
+  const target = Math.min(renderedCount + RENDER_BATCH, allItems.length);
+  if (target <= renderedCount) return;
+
+  // Find which groups/items are already rendered and which need adding
+  // For simplicity: rebuild full group DOM but only add new item thumbs
+  // (use data-index on each thumb to avoid duplicates)
+  const gallery = document.getElementById('gallery');
+  const rendered = new Set([...gallery.querySelectorAll('.thumb[data-idx]')].map(el => +el.dataset.idx));
+
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    let groupEl = gallery.querySelector(`.date-group[data-group="${gi}"]`);
+    if (!groupEl) {
+      groupEl = document.createElement('div');
+      groupEl.className = 'date-group';
+      groupEl.dataset.group = gi;
+      groupEl.innerHTML = `<div class="date-label">${g.label}<span class="count"></span></div><div class="grid"></div>`;
+      gallery.appendChild(groupEl);
+    }
+    const grid = groupEl.querySelector('.grid');
+    const label = groupEl.querySelector('.date-label .count');
+
+    // Add any unrendered items in this group
+    for (const item of g.items) {
+      const idx = allItems.indexOf(item);
+      if (idx >= target) break;
+      if (rendered.has(idx)) continue;
+      const thumbEl = createThumb(item, idx);
+      grid.appendChild(thumbEl);
+    }
+
+    // Update count
+    const visibleCount = grid.querySelectorAll('.thumb').length;
+    label.textContent = `· ${visibleCount}`;
+  }
+
+  renderedCount = target;
+
+  // Lazy-load visible thumbnails
+  setTimeout(observeThumbs, 50);
+}
+
+function createThumb(item, idx) {
+  const div = document.createElement('div');
+  div.className = 'thumb skeleton';
+  div.dataset.idx = idx;
+  div.dataset.url = item.url;
+  div.dataset.type = item.isVideo ? 'video' : 'image';
+  div.onclick = () => openLightbox(idx);
+
+  if (item.isVideo) {
+    const badge = document.createElement('div');
+    badge.className = 'video-badge';
+    badge.textContent = formatDur(item);
+    div.appendChild(badge);
+  }
+  return div;
+}
+
+// Intersection observer for lazy image loading
+let thumbObserver;
+function observeThumbs() {
+  if (!thumbObserver) {
+    thumbObserver = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const el = e.target;
+        thumbObserver.unobserve(el);
+        loadThumb(el);
+      }
+    }, { rootMargin: '400px' });
+  }
+  document.querySelectorAll('.thumb.skeleton[data-url]').forEach(el => {
+    if (!el.dataset.observed) {
+      el.dataset.observed = '1';
+      thumbObserver.observe(el);
+    }
+  });
+}
+
+function loadThumb(el) {
+  const url = el.dataset.url;
+  const isVideo = el.dataset.type === 'video';
+
+  if (isVideo) {
+    const vid = document.createElement('video');
+    vid.src = tokenizeUrl(url);
+    vid.preload = 'metadata';
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.onloadedmetadata = () => { el.classList.remove('skeleton'); };
+    vid.onerror = () => {
+      el.classList.remove('skeleton');
+      el.innerHTML = '<div class="err-icon">⬡</div>';
+    };
+    el.insertBefore(vid, el.firstChild);
+  } else {
+    const img = document.createElement('img');
+    img.src = tokenizeUrl(url);
+    img.alt = '';
+    img.loading = 'lazy';
+    img.onload = () => el.classList.remove('skeleton');
+    img.onerror = () => {
+      el.classList.remove('skeleton');
+      el.innerHTML = '<div class="err-icon">⬡</div>';
+    };
+    el.insertBefore(img, el.firstChild);
+  }
+}
+
+function tokenizeUrl(url) {
+  if (!accessToken) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'access_token=' + encodeURIComponent(accessToken);
+}
+
+function formatDur(item) { return '▶'; }
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+// ─────────────────────────────────────────────
+// INFINITE SCROLL (IntersectionObserver on sentinel)
+// ─────────────────────────────────────────────
+const sentinel = document.getElementById('sentinel');
+const scrollObserver = new IntersectionObserver(async (entries) => {
+  if (!entries[0].isIntersecting) return;
+  const bucket = document.getElementById('bucket-input').value.trim();
+  if (!bucket) return;
+
+  if (renderedCount < allItems.length) {
+    renderNext();
+  } else if (!allLoaded && !loading) {
+    const prefix = folderMode ? currentPath : document.getElementById('prefix-input').value.trim();
+    await loadPage(bucket, prefix);
+  }
+}, { rootMargin: '300px' });
+scrollObserver.observe(sentinel);
+
+// ─────────────────────────────────────────────
+// STATUS UI
+// ─────────────────────────────────────────────
+function showStatus(type, msg) {
+  const gallery = document.getElementById('gallery');
+  let html = '';
+  if (type === 'loading') {
+    html = `<div id="status-wrap"><div class="spinner"></div><p>Loading media from bucket…</p></div>`;
+  } else if (type === 'empty') {
+    html = `<div id="status-wrap"><div class="big" style="font-size:28px;">No media found</div><p>No images or videos matched in this bucket / prefix. Check the bucket name and your access permissions.</p></div>`;
+  } else if (type === 'error') {
+    html = `<div id="status-wrap"><div class="big" style="color:var(--red);font-size:28px;">Error</div><p>${escHtml(msg)}</p>
+    ${!accessToken ? '<p style="color:var(--text2);">Tip: sign in with Google for private buckets, or check your bucket CORS settings.</p>' : ''}
+    </div>`;
+  }
+  if (html) gallery.innerHTML = html;
+}
+function hideStatus() {
+  const s = document.getElementById('status-wrap');
+  if (s) s.remove();
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─────────────────────────────────────────────
+// LIGHTBOX
+// ─────────────────────────────────────────────
+function openLightbox(idx) {
+  lbIndex = idx;
+  renderLightbox();
+  document.getElementById('lightbox').classList.add('open');
+  document.addEventListener('keydown', lbKey);
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.removeEventListener('keydown', lbKey);
+  // Stop any video
+  const v = document.querySelector('#lb-media video');
+  if (v) v.pause();
+}
+function lbKey(e) {
+  if (e.key === 'ArrowLeft')  lbNav(-1);
+  if (e.key === 'ArrowRight') lbNav(1);
+  if (e.key === 'Escape') closeLightbox();
+}
+function lbNav(dir) {
+  lbIndex = Math.max(0, Math.min(allItems.length - 1, lbIndex + dir));
+  renderLightbox();
+  // Preload more if near end
+  if (lbIndex > allItems.length - 10 && !allLoaded && !loading) {
+    const bucket = document.getElementById('bucket-input').value.trim();
+    const prefix = folderMode ? currentPath : document.getElementById('prefix-input').value.trim();
+    loadPage(bucket, prefix);
+  }
+}
+function renderLightbox() {
+  const item = allItems[lbIndex];
+  if (!item) return;
+
+  document.getElementById('lb-name').textContent = item.name.split('/').pop();
+  document.getElementById('lb-date').textContent = item.created.toLocaleString();
+  document.getElementById('lb-size').textContent = fmtSize(item.size);
+  document.getElementById('lb-type').textContent = item.contentType || (item.isVideo ? 'video' : 'image');
+  document.getElementById('lb-counter').textContent = `${lbIndex + 1} / ${allItems.length}${allLoaded ? '' : '+'}`;
+  document.getElementById('lb-download').href = tokenizeUrl(item.url);
+  document.getElementById('lb-download').download = item.name.split('/').pop();
+
+  const mediaDiv = document.getElementById('lb-media');
+  mediaDiv.innerHTML = '';
+
+  if (item.isVideo) {
+    const v = document.createElement('video');
+    v.src = tokenizeUrl(item.url);
+    v.controls = true;
+    v.autoplay = true;
+    v.style.maxWidth = '100%';
+    v.style.maxHeight = '80vh';
+    mediaDiv.appendChild(v);
+  } else {
+    const img = document.createElement('img');
+    img.src = tokenizeUrl(item.url);
+    img.alt = item.name;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '80vh';
+    mediaDiv.appendChild(img);
+  }
+
+  document.getElementById('lb-prev').style.display = lbIndex > 0 ? '' : 'none';
+  document.getElementById('lb-next').style.display = lbIndex < allItems.length - 1 ? '' : 'none';
+}
+
+// ─────────────────────────────────────────────
+// KEYBOARD SHORTCUT: Enter in inputs
+// ─────────────────────────────────────────────
+['bucket-input','prefix-input'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') startLoad();
+  });
+});
+</script>
+</body>
+</html>
