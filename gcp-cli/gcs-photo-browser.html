@@ -1208,8 +1208,6 @@ function renderLightbox() {
 // ─────────────────────────────────────────────
 // METADATA PANEL
 // ─────────────────────────────────────────────
-let metaCache = {};  // cache by "bucket/name"
-
 function toggleMetaPanel() {
   const panel = document.getElementById('lb-meta-panel');
   if (panel.classList.contains('open')) {
@@ -1223,21 +1221,13 @@ function toggleMetaPanel() {
 async function fetchAndShowMeta() {
   const item = allItems[lbIndex];
   if (!item) return;
-  const cacheKey = `${item.bucket}/${item.name}`;
   const container = document.getElementById('lb-meta-content');
-
-  if (metaCache[cacheKey]) {
-    container.innerHTML = buildMetaTable(metaCache[cacheKey]);
-    return;
-  }
-
   container.textContent = 'Loading…';
   try {
     const url = `${GCS_API}/b/${encodeURIComponent(item.bucket)}/o/${encodeURIComponent(item.name)}?alt=json`;
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
     const meta = await resp.json();
-    metaCache[cacheKey] = meta;
     container.innerHTML = buildMetaTable(meta);
   } catch (e) {
     container.textContent = `Error fetching metadata: ${e.message}`;
