@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cloud Gallery</title>
+<link rel="icon" href="favicon_kiss/favicon.ico">
+<link rel="apple-touch-icon" href="favicon_kiss/apple-touch-icon.png">
+<link rel="manifest" href="favicon_kiss/site.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon_kiss/android-chrome-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="favicon_kiss/android-chrome-512x512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.onGsiLoad && window.onGsiLoad()"></script>
@@ -534,19 +539,13 @@
 <div id="gallery-wrap">
   <div id="gallery">
     <div id="status-wrap">
-      <div class="big">Your memories,</div>
-      <div class="big" style="font-style:normal;color:var(--text3);font-size:28px;">beautifully browsed.</div>
-      <p>Sign in with your Google account, enter a bucket name, and browse photos &amp; videos. Or leave the bucket empty and enter a project ID to browse your buckets first.</p>
-      <div class="hint">
-        <strong style="color:var(--text);">Setup checklist</strong><br><br>
-        1. Your bucket needs <code>Storage Object Viewer</code> access for your Google account<br>
-        2. Configure CORS on the bucket — see instructions below<br>
-        3. Sign in, enter bucket name, hit Browse
-      </div>
+      <img src="favicon_kiss/android-chrome-512x512.png" style="width:200px;height:200px;margin-bottom:16px;">
+      <div class="big" style="font-style:normal;color:var(--text3);font-size:28px;">View the pics and vids in your Google Cloud Storage bucket</div>
+      <p>Sign in with your Google account, then enter a bucket name. Or leave the bucket empty and enter a project ID to browse your buckets first.</p>
       <details style="max-width:440px;color:var(--text2);font-size:12px;">
-        <summary style="cursor:pointer;color:var(--text3);margin-bottom:8px;">CORS configuration (click to expand)</summary>
+        <summary style="cursor:pointer;color:var(--text3);margin-bottom:8px;">Setup checklist (click to expand)</summary>
         <div class="hint" style="margin-top:8px;">
-          Run this once via <code>gsutil</code>:<br><br>
+          1. Configure CORS on the bucket <span style="color:var(--text3);">(once per bucket)</span>. Run via <code>gsutil</code>:<br><br>
           <code>gsutil cors set cors.json gs://YOUR-BUCKET</code><br><br>
           Where <code>cors.json</code> contains:<br>
           <pre style="margin-top:6px;color:var(--accent);font-size:11px;">[{
@@ -554,7 +553,9 @@
   "method": ["GET"],
   "responseHeader": ["Content-Type","Authorization"],
   "maxAgeSeconds": 3600
-}]</pre>
+}]</pre><br>
+          2. Grant <code>Storage Object Viewer</code> access <span style="color:var(--text3);">(once per user)</span>. Run via <code>gcloud</code>:<br><br>
+          <code>gcloud projects add-iam-policy-binding PROJECT_ID --member=user:YOUR_EMAIL@gmail.com --role=roles/storage.objectViewer</code>
         </div>
       </details>
     </div>
