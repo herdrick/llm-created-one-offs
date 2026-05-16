@@ -686,6 +686,8 @@ async function startLoad() {
     return;
   }
 
+  updateUrl();
+
   folderMode = document.getElementById('folder-mode-toggle').checked;
 
   if (folderMode) {
@@ -701,6 +703,14 @@ async function startLoad() {
     showStatus('loading');
     await loadPage(bucket, prefix);
   }
+}
+
+function updateUrl() {
+  const bucket = document.getElementById('bucket-input').value.trim();
+  if (!bucket) return;
+  const params = new URLSearchParams();
+  params.set('bucket', bucket);
+  window.history.replaceState({}, '', '?' + params.toString());
 }
 
 async function listBuckets() {
@@ -758,6 +768,7 @@ function renderBucketTiles(buckets) {
     tile.className = 'folder-tile';
     tile.onclick = () => {
       document.getElementById('bucket-input').value = b.name;
+      updateUrl();
       startLoad();
     };
     tile.innerHTML = `<div class="folder-icon">🪣</div><div class="folder-name">${escHtml(b.name)}</div>`;
@@ -1259,6 +1270,19 @@ function buildMetaTable(m) {
     if (e.key === 'Enter') startLoad();
   });
 });
+
+// ─────────────────────────────────────────────
+// LOAD FROM URL QUERY PARAMS ON PAGE INIT
+// ─────────────────────────────────────────────
+function initFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const bucket = params.get('bucket');
+  if (bucket) {
+    document.getElementById('bucket-input').value = bucket;
+  }
+}
+
+initFromUrl();
 </script>
 </body>
 </html>
