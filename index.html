@@ -639,6 +639,8 @@ function initTokenClient() {
       // GSI tokens last 1 hour; expire a minute early
       tokenExpiry = Date.now() + ((resp.expires_in || 3600) - 60) * 1000;
       setAuthUI(true);
+      // Auto-start browsing after successful sign in
+      startLoad();
     },
   });
 }
