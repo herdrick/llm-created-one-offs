@@ -108,6 +108,12 @@
     gap: 7px;
   }
   #btn-auth:hover { background: rgba(232,200,122,0.1); }
+  @keyframes yft {
+    0%   { background: #ffff00; transform: scale(1.07); }
+    15%  { transform: scale(1); }
+    100% { background: transparent; }
+  }
+  #btn-auth.highlight { animation: yft 4s ease-out forwards; }
   #auth-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
@@ -795,6 +801,8 @@ function initTokenClient() {
 // Called once GSI script has loaded
 window.onGsiLoad = initTokenClient;
 
+document.addEventListener('DOMContentLoaded', () => setAuthUI(false));
+
 function handleAuth() {
   if (accessToken && Date.now() < tokenExpiry) {
     // Already signed in — sign out
@@ -817,6 +825,13 @@ function setAuthUI(authed) {
   document.getElementById('auth-dot').className = authed ? 'authed' : '';
   document.getElementById('auth-label').textContent = authed ? 'Signed in — click to sign out' : 'Sign in with Google';
   document.body.classList.toggle('signed-out', !authed);
+  if (!authed) {
+    const btn = document.getElementById('btn-auth');
+    btn.classList.remove('highlight');
+    void btn.offsetWidth; // force reflow so re-adding the class restarts the animation
+    btn.classList.add('highlight');
+    btn.addEventListener('animationend', () => btn.classList.remove('highlight'), { once: true });
+  }
 }
 
 function authHeaders() {
