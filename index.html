@@ -117,27 +117,6 @@
   }
   #auth-dot.authed { background: #52c87a; }
 
-  #prefix-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 20px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  #prefix-bar label { color: var(--text3); font-size: 12px; white-space: nowrap; }
-  #prefix-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: var(--text2);
-    font-family: var(--font);
-    font-size: 12px;
-    outline: none;
-  }
-  #prefix-input::placeholder { color: var(--text3); }
-
   /* ── FOLDER MODE ── */
   .folder-toggle {
     display: flex;
@@ -677,13 +656,7 @@
     <span id="auth-dot"></span>
     <span id="auth-label">Sign in with Google</span>
   </button>
-  <input id="project-input" style="flex:0.5;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;" type="text" placeholder="project ID (for bucket listing)" spellcheck="false">
-  <input id="bucket-input" type="text" placeholder="bucket name (optional)" spellcheck="false">
-  <input id="prefix-input" style="flex:0.5;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;" type="text" placeholder="prefix/ (optional)">
-  <label class="folder-toggle">
-    <input type="checkbox" id="folder-mode-toggle" checked onchange="onFolderModeChange()">
-    Show folders
-  </label>
+  <input id="bucket-input" type="text" placeholder="bucket name" spellcheck="false">
   <label class="folder-toggle">
     <input type="checkbox" id="select-mode-toggle" onchange="toggleSelectMode()">
     Select mode
@@ -707,7 +680,7 @@
     <div id="status-wrap">
       <img src="favicon_kiss/android-chrome-512x512.png" style="width:200px;height:200px;margin-bottom:16px;">
       <div class="big" style="font-style:normal;color:var(--text3);font-size:28px;">View the pics and vids in your Google Cloud Storage bucket</div>
-      <p>Sign in with your Google account, then enter a bucket name. Or leave the bucket empty and enter a project ID to browse your buckets first.</p>
+      <p>Sign in with your Google account, then enter a bucket name.</p>
       <details style="max-width:440px;color:var(--text2);font-size:12px;">
         <summary style="cursor:pointer;color:var(--text3);margin-bottom:8px;">Setup checklist (click to expand)</summary>
         <div class="hint" style="margin-top:8px;">
@@ -786,7 +759,7 @@ const RENDER_BATCH = 80;   // items to add to DOM at a time
 let lbIndex = 0;           // lightbox current index into allItems
 
 // Folder mode state
-let folderMode     = true;
+const folderMode   = true;
 let currentPath    = '';   // current folder path (e.g. "photos/2024/")
 let currentFolders = [];   // subfolder prefixes at current level
 
@@ -850,30 +823,13 @@ function authHeaders() {
 // ─────────────────────────────────────────────
 async function startLoad() {
   const bucket = document.getElementById('bucket-input').value.trim();
-
   if (!bucket) {
-    // No bucket specified — list buckets for the project
-    await listBuckets();
+    showStatus('error', 'Enter a bucket name.');
     return;
   }
-
   updateUrl();
-
-  folderMode = document.getElementById('folder-mode-toggle').checked;
-
-  if (folderMode) {
-    const prefix = document.getElementById('prefix-input').value.trim();
-    currentPath = prefix ? (prefix.endsWith('/') ? prefix : prefix + '/') : '';
-    await navigateToFolder(currentPath);
-  } else {
-    const prefix = document.getElementById('prefix-input').value.trim();
-    currentPath = '';
-    currentFolders = [];
-    resetGallery();
-    updateBreadcrumbs();
-    showStatus('loading');
-    await loadPage(bucket, prefix);
-  }
+  currentPath = '';
+  await navigateToFolder(currentPath);
 }
 
 function updateUrl() {
@@ -882,71 +838,6 @@ function updateUrl() {
   const params = new URLSearchParams();
   params.set('bucket', bucket);
   window.history.replaceState({}, '', '?' + params.toString());
-}
-
-async function listBuckets() {
-  const project = document.getElementById('project-input').value.trim();
-  if (!project) {
-    showStatus('error', 'Enter a project ID to list buckets, or enter a bucket name directly.');
-    return;
-  }
-  if (!accessToken) {
-    showStatus('error', 'Sign in with Google to list buckets.');
-    return;
-  }
-
-  resetGallery();
-  showStatus('loading');
-
-  try {
-    const params = new URLSearchParams({ project });
-    const res = await fetch(`${GCS_API}/b?${params}`, { headers: authHeaders() });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    const buckets = data.items || [];
-    if (buckets.length === 0) {
-      showStatus('empty');
-      return;
-    }
-    hideStatus();
-    renderBucketTiles(buckets);
-  } catch(e) {
-    showStatus('error', e.message);
-  }
-}
-
-function renderBucketTiles(buckets) {
-  const gallery = document.getElementById('gallery');
-  gallery.innerHTML = '';
-
-  const container = document.createElement('div');
-  container.className = 'folder-section';
-
-  const label = document.createElement('div');
-  label.className = 'date-label';
-  label.innerHTML = `Buckets<span class="count">· ${buckets.length}</span>`;
-  container.appendChild(label);
-
-  const grid = document.createElement('div');
-  grid.className = 'grid';
-  container.appendChild(grid);
-
-  for (const b of buckets) {
-    const tile = document.createElement('div');
-    tile.className = 'folder-tile';
-    tile.onclick = () => {
-      document.getElementById('bucket-input').value = b.name;
-      updateUrl();
-      startLoad();
-    };
-    tile.innerHTML = `<div class="folder-icon">🪣</div><div class="folder-name">${escHtml(b.name)}</div>`;
-    grid.appendChild(tile);
-  }
-
-  gallery.appendChild(container);
 }
 
 function resetGallery() {
@@ -968,40 +859,25 @@ async function navigateToFolder(path) {
   await loadPage(bucket, currentPath);
 }
 
-function onFolderModeChange() {
-  folderMode = document.getElementById('folder-mode-toggle').checked;
-  if (!folderMode) {
-    currentPath = '';
-    currentFolders = [];
-    updateBreadcrumbs();
-  }
-}
-
 function updateBreadcrumbs() {
   const bar = document.getElementById('breadcrumb-bar');
-  if (!folderMode || !document.getElementById('bucket-input').value.trim()) {
+  const bucket = document.getElementById('bucket-input').value.trim();
+  if (!bucket) {
     bar.classList.remove('visible');
     return;
   }
   bar.classList.add('visible');
   bar.innerHTML = '';
 
-  const bucket = document.getElementById('bucket-input').value.trim();
-  const basePrefix = document.getElementById('prefix-input').value.trim();
-  const basePath = basePrefix ? (basePrefix.endsWith('/') ? basePrefix : basePrefix + '/') : '';
-
-  // Root segment
   const root = document.createElement('span');
   root.className = 'bc-segment';
-  root.textContent = bucket + (basePath ? '/' + basePath : '/');
-  root.onclick = () => navigateToFolder(basePath);
+  root.textContent = bucket + '/';
+  root.onclick = () => navigateToFolder('');
   bar.appendChild(root);
 
-  // Path segments beyond the base prefix
-  if (currentPath.length > basePath.length) {
-    const relative = currentPath.slice(basePath.length);
-    const parts = relative.split('/').filter(Boolean);
-    let accumulated = basePath;
+  if (currentPath.length > 0) {
+    const parts = currentPath.split('/').filter(Boolean);
+    let accumulated = '';
     for (let i = 0; i < parts.length; i++) {
       accumulated += parts[i] + '/';
       const sep = document.createElement('span');
@@ -1245,8 +1121,7 @@ const scrollObserver = new IntersectionObserver(async (entries) => {
   if (renderedCount < allItems.length) {
     renderNext();
   } else if (!allLoaded && !loading) {
-    const prefix = folderMode ? currentPath : document.getElementById('prefix-input').value.trim();
-    await loadPage(bucket, prefix);
+    await loadPage(bucket, currentPath);
   }
 }, { rootMargin: '300px' });
 scrollObserver.observe(sentinel);
@@ -1315,8 +1190,7 @@ function lbNav(dir) {
   // Preload more if near end
   if (lbIndex > allItems.length - 10 && !allLoaded && !loading) {
     const bucket = document.getElementById('bucket-input').value.trim();
-    const prefix = folderMode ? currentPath : document.getElementById('prefix-input').value.trim();
-    loadPage(bucket, prefix);
+    loadPage(bucket, currentPath);
   }
 }
 function renderLightbox() {
@@ -1641,10 +1515,8 @@ async function lbCategorize() {
 // ─────────────────────────────────────────────
 // KEYBOARD SHORTCUT: Enter in inputs
 // ─────────────────────────────────────────────
-['project-input','bucket-input','prefix-input'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', e => {
-    if (e.key === 'Enter') startLoad();
-  });
+document.getElementById('bucket-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startLoad();
 });
 
 // ─────────────────────────────────────────────
