@@ -446,6 +446,57 @@
   }
   #lb-meta-close:hover { background: var(--bg3); color: var(--text); }
   #lb-date { font-size: 12px; color: var(--text3); white-space: nowrap; }
+  #lb-trash-btn {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid rgba(224,82,82,0.4);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  #lb-trash-btn:hover { background: rgba(224,82,82,0.1); }
+  #lb-cat-input {
+    width: 130px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 13px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    flex-shrink: 0;
+  }
+  #lb-cat-input::placeholder { color: var(--text3); }
+  #lb-cat-input:focus { border-color: rgba(255,255,255,0.2); }
+  #lb-cat-btn {
+    background: var(--accent);
+    color: #1a1409;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  #lb-cat-btn:hover { background: var(--accent2); }
+  #lb-action-status {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+  }
   #lb-download {
     background: var(--surface);
     color: var(--text);
@@ -504,6 +555,108 @@
   }
   #lb-info span { color: var(--text2); }
 
+  /* ── SELECT MODE ── */
+  #select-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #select-bar.visible { display: flex; }
+  #sel-count {
+    font-size: 13px;
+    color: var(--text2);
+    white-space: nowrap;
+    min-width: 80px;
+  }
+  #sel-dest {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #sel-dest::placeholder { color: var(--text3); }
+  #sel-dest:focus { border-color: rgba(255,255,255,0.2); }
+  #btn-trash {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid rgba(224,82,82,0.4);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-family: var(--font);
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  #btn-trash:hover { background: rgba(224,82,82,0.1); }
+  #btn-move {
+    background: var(--accent);
+    color: #1a1409;
+    border: none;
+    border-radius: 20px;
+    padding: 7px 16px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  #btn-move:hover { background: var(--accent2); }
+  #sel-confirm {
+    font-size: 12px;
+    color: #52c87a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sel-check {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #1a1409;
+    font-size: 13px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .thumb.selected .sel-check,
+  .folder-tile.selected .sel-check { opacity: 1; }
+  .thumb.selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--accent);
+    pointer-events: none;
+  }
+  .folder-tile.selected {
+    border-color: var(--accent);
+    background: rgba(232,200,122,0.1);
+  }
+  body.select-mode .thumb { cursor: default; }
+  body.select-mode .thumb:hover img,
+  body.select-mode .thumb:hover video { transform: none; }
+  body.select-mode .folder-tile[data-path] { cursor: default; }
+
   /* Responsive */
   @media (max-width: 600px) {
     .grid { grid-template-columns: repeat(3, 1fr); }
@@ -531,10 +684,22 @@
     <input type="checkbox" id="folder-mode-toggle" checked onchange="onFolderModeChange()">
     Show folders
   </label>
+  <label class="folder-toggle">
+    <input type="checkbox" id="select-mode-toggle" onchange="toggleSelectMode()">
+    Select mode
+  </label>
   <button id="btn-load" onclick="startLoad()">Browse</button>
 </div>
 
 <div id="breadcrumb-bar"></div>
+
+<div id="select-bar">
+  <span id="sel-count">0 selected</span>
+  <input id="sel-dest" type="text" placeholder="destination path (for Move)" spellcheck="false">
+  <button id="btn-trash" onclick="doTrash()">Trash</button>
+  <button id="btn-move" onclick="doMove()">Move</button>
+  <span id="sel-confirm"></span>
+</div>
 
 <!-- ── GALLERY ── -->
 <div id="gallery-wrap">
@@ -569,8 +734,12 @@
 <div id="lightbox">
   <div id="lb-topbar">
     <button id="lb-close" onclick="closeLightbox()">✕</button>
+    <button id="lb-trash-btn" onclick="lbTrash()">Trash</button>
     <div id="lb-name" onclick="toggleMetaPanel()"></div>
     <div id="lb-date"></div>
+    <span id="lb-action-status"></span>
+    <input id="lb-cat-input" type="text" placeholder="category" spellcheck="false">
+    <button id="lb-cat-btn" onclick="lbCategorize()">Categorize</button>
     <a id="lb-download" target="_blank">↓ Download</a>
   </div>
   <div id="lb-body">
@@ -595,7 +764,7 @@
 // CONFIG
 // ─────────────────────────────────────────────
 const CLIENT_ID = '519927379455-u7ilqbg33i5ussde1mkabjjm4f4jdmqh.apps.googleusercontent.com'; // ← Replace this
-const SCOPES    = 'https://www.googleapis.com/auth/devstorage.read_only';
+const SCOPES    = 'https://www.googleapis.com/auth/devstorage.read_write';
 const GCS_API   = 'https://storage.googleapis.com/storage/v1';
 const PAGE_SIZE = 100;
 
@@ -785,6 +954,7 @@ function resetGallery() {
   currentFolders = [];
   document.getElementById('gallery').innerHTML = '';
   document.getElementById('load-more-spinner').style.display = 'none';
+  clearSelection();
 }
 
 async function navigateToFolder(path) {
@@ -943,8 +1113,12 @@ function renderFolderTiles() {
     const name = prefix.slice(0, -1).split('/').pop(); // strip trailing / and get last segment
     const tile = document.createElement('div');
     tile.className = 'folder-tile';
-    tile.onclick = () => navigateToFolder(prefix);
+    tile.dataset.path = prefix;
     tile.innerHTML = `<div class="folder-icon">📁</div><div class="folder-name">${escHtml(name)}</div>`;
+    const check = document.createElement('div');
+    check.className = 'sel-check';
+    check.textContent = '✓';
+    tile.appendChild(check);
     grid.appendChild(tile);
   }
 
@@ -981,7 +1155,11 @@ function createThumb(item, idx) {
   div.dataset.idx = idx;
   div.dataset.url = item.url;
   div.dataset.type = item.isVideo ? 'video' : 'image';
-  div.onclick = () => openLightbox(idx);
+
+  const check = document.createElement('div');
+  check.className = 'sel-check';
+  check.textContent = '✓';
+  div.appendChild(check);
 
   if (item.isVideo) {
     const badge = document.createElement('div');
@@ -1072,6 +1250,18 @@ const scrollObserver = new IntersectionObserver(async (entries) => {
   }
 }, { rootMargin: '300px' });
 scrollObserver.observe(sentinel);
+
+document.getElementById('gallery').addEventListener('click', (e) => {
+  const thumb = e.target.closest('.thumb');
+  const selFolder = e.target.closest('.folder-tile[data-path]');
+  if (thumb) {
+    if (selectMode) handleSelectClick(e, thumb);
+    else openLightbox(parseInt(thumb.dataset.idx));
+  } else if (selFolder) {
+    if (selectMode) handleSelectClick(e, selFolder);
+    else navigateToFolder(selFolder.dataset.path);
+  }
+});
 
 // ─────────────────────────────────────────────
 // STATUS UI
@@ -1262,6 +1452,190 @@ function buildMetaTable(m) {
   row('Media Link', m.mediaLink);
 
   return html + `<table>${rows.join('')}</table>`;
+}
+
+// ─────────────────────────────────────────────
+// SELECT MODE
+// ─────────────────────────────────────────────
+let selectMode = false;
+let selectedPaths = new Set();
+let lastClickedEl = null;
+let confirmTimer = null;
+
+function toggleSelectMode() {
+  selectMode = document.getElementById('select-mode-toggle').checked;
+  document.getElementById('select-bar').classList.toggle('visible', selectMode);
+  document.body.classList.toggle('select-mode', selectMode);
+  if (selectMode) {
+    const destEl = document.getElementById('sel-dest');
+    if (!destEl.value) {
+      const bucket = document.getElementById('bucket-input').value.trim();
+      destEl.value = (bucket ? bucket + '/' : '') + currentPath;
+    }
+  } else {
+    clearSelection();
+  }
+}
+
+function getSelectableElements() {
+  return [...document.querySelectorAll('.folder-tile[data-path], .thumb[data-idx]')];
+}
+
+function getItemPath(el) {
+  if (el.classList.contains('folder-tile')) return el.dataset.path;
+  return allItems[parseInt(el.dataset.idx)].name;
+}
+
+function handleSelectClick(e, el) {
+  const path = getItemPath(el);
+  if (e.shiftKey && lastClickedEl && lastClickedEl !== el) {
+    const all = getSelectableElements();
+    const cur = all.indexOf(el);
+    const last = all.indexOf(lastClickedEl);
+    if (cur >= 0 && last >= 0) {
+      const lo = Math.min(cur, last);
+      const hi = Math.max(cur, last);
+      for (let i = lo; i <= hi; i++) {
+        selectedPaths.add(getItemPath(all[i]));
+        all[i].classList.add('selected');
+      }
+    }
+  } else {
+    if (selectedPaths.has(path)) {
+      selectedPaths.delete(path);
+      el.classList.remove('selected');
+    } else {
+      selectedPaths.add(path);
+      el.classList.add('selected');
+    }
+    lastClickedEl = el;
+  }
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const n = selectedPaths.size;
+  document.getElementById('sel-count').textContent = n === 0 ? '0 selected' : `${n} selected`;
+}
+
+function clearSelection() {
+  selectedPaths.clear();
+  lastClickedEl = null;
+  document.querySelectorAll('.thumb.selected, .folder-tile.selected').forEach(el => {
+    el.classList.remove('selected');
+  });
+  updateSelectionUI();
+}
+
+function showSelectConfirmation(msg, isError) {
+  const el = document.getElementById('sel-confirm');
+  el.style.color = isError ? 'var(--red)' : '#52c87a';
+  el.textContent = msg;
+  clearTimeout(confirmTimer);
+  confirmTimer = setTimeout(() => { el.textContent = ''; }, 6000);
+}
+
+function nowStamp() {
+  return new Date().toISOString().replace(/T(\d{2}):(\d{2}):(\d{2}).*/, 'T$1$2$3Z');
+}
+
+async function doTrash() {
+  if (selectedPaths.size === 0) return;
+  await writeManifest('trash');
+}
+
+async function doMove() {
+  if (selectedPaths.size === 0) return;
+  const dest = document.getElementById('sel-dest').value.trim();
+  if (!dest) { alert('Enter a destination path.'); return; }
+  if (!/^[A-Za-z0-9_\-\/]+$/.test(dest)) {
+    alert('Destination may only contain letters, digits, hyphens, underscores, and slashes.');
+    return;
+  }
+  await writeManifest('move', dest);
+}
+
+async function gcsUploadText(bucket, filename, content) {
+  const url = `https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(bucket)}/o?uploadType=media&name=${encodeURIComponent(filename)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'text/plain' },
+    body: content,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || 'HTTP ' + res.status);
+  }
+}
+
+async function writeManifest(type, dest) {
+  const bucket = document.getElementById('bucket-input').value.trim();
+  const paths = [...selectedPaths];
+  const count = paths.length;
+  const stamp = nowStamp();
+
+  let content, filename;
+  if (type === 'trash') {
+    content = paths.map(p => `gs://${bucket}/${p}`).join('\n') + '\n';
+    filename = `__marked_files/to-trash.${stamp}.txt`;
+  } else {
+    content = paths.map(p => `${dest}\tgs://${bucket}/${p}`).join('\n') + '\n';
+    filename = `__marked_files/to-move.${stamp}.txt`;
+  }
+
+  try {
+    await gcsUploadText(bucket, filename, content);
+  } catch(e) {
+    showSelectConfirmation(`Error: ${e.message}`, true);
+    return;
+  }
+
+  const msg = type === 'trash'
+    ? `marked ${count} item${count !== 1 ? 's' : ''} as trash`
+    : `marked ${count} item${count !== 1 ? 's' : ''} to be moved to ${dest}`;
+  showSelectConfirmation(msg);
+  clearSelection();
+}
+
+let lbActionTimer = null;
+function showLbStatus(msg, isError) {
+  const el = document.getElementById('lb-action-status');
+  el.style.color = isError ? 'var(--red)' : '#52c87a';
+  el.textContent = msg;
+  clearTimeout(lbActionTimer);
+  lbActionTimer = setTimeout(() => { el.textContent = ''; }, 5000);
+}
+
+async function lbTrash() {
+  const item = allItems[lbIndex];
+  if (!item) return;
+  const bucket = document.getElementById('bucket-input').value.trim();
+  try {
+    await gcsUploadText(bucket, `__marked_files/to-trash.${nowStamp()}.txt`, `gs://${bucket}/${item.name}\n`);
+    showLbStatus('marked as trash');
+    lbNav(1);
+  } catch(e) {
+    showLbStatus(`Error: ${e.message}`, true);
+  }
+}
+
+async function lbCategorize() {
+  const item = allItems[lbIndex];
+  if (!item) return;
+  const dest = document.getElementById('lb-cat-input').value.trim();
+  if (!dest) { alert("For that, you'll need to type a category in the box."); return; }
+  if (!/^[A-Za-z0-9_\-\/]+$/.test(dest)) {
+    alert('Category may only contain letters, digits, hyphens, underscores, and slashes.');
+    return;
+  }
+  const bucket = document.getElementById('bucket-input').value.trim();
+  try {
+    await gcsUploadText(bucket, `__marked_files/to-move.${nowStamp()}.txt`, `${dest}\tgs://${bucket}/${item.name}\n`);
+    showLbStatus(`marked to move to ${dest}`);
+    lbNav(1);
+  } catch(e) {
+    showLbStatus(`Error: ${e.message}`, true);
+  }
 }
 
 // ─────────────────────────────────────────────
